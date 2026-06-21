@@ -1,0 +1,9 @@
+.venv
+.vscode
+.idea
+.junie
+
+__pycache__
+
+build
+dist
