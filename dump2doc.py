@@ -381,12 +381,11 @@ class DocGenerator:
 
         每轮 = {
             'user_msg': dict or None,
-            'intermediate': [msg_dict, ...],   # 中间步骤（思考/工具/系统）
-            'final_msg': dict or None,          # 最终回答
+            'messages': [msg_dict, ...],   # 后续所有消息（助手/系统）
         }
         """
         turns = []
-        current = {"user_msg": None, "intermediate": [], "final_msg": None}
+        current = {"user_msg": None, "messages": []}
 
         for msg in self._messages:
             if not self._should_include(msg):
@@ -394,60 +393,41 @@ class DocGenerator:
             role = msg.get("role", "")
 
             if role == "user":
-                # 上一轮结束
-                if current["user_msg"] is not None or current["intermediate"] or current["final_msg"]:
-                    self._finalize_turn(current)
+                if current["user_msg"] is not None or current["messages"]:
                     turns.append(current)
-                current = {"user_msg": msg, "intermediate": [], "final_msg": None}
-            elif current["user_msg"] is None:
-                # 开头没有用户消息的系统/助手消息 → 作为中间步骤
-                current["intermediate"].append(msg)
+                current = {"user_msg": msg, "messages": []}
             else:
-                # 用户消息之后的内容
-                current["intermediate"].append(msg)
+                current["messages"].append(msg)
 
-        # 最后一轮
-        if current["user_msg"] is not None or current["intermediate"] or current["final_msg"]:
-            self._finalize_turn(current)
+        if current["user_msg"] is not None or current["messages"]:
             turns.append(current)
 
         return turns
 
-    def _finalize_turn(self, turn: dict) -> None:
-        """从 intermediate 中提取最终回答（最后一个有实质文本的助手消息）。"""
-        intermediates = turn["intermediate"]
-        if not intermediates:
-            return
-
-        # 从后往前找第一个有实质文本的助手消息作为 final
-        final_idx = -1
-        for i in range(len(intermediates) - 1, -1, -1):
-            msg = intermediates[i]
-            if msg.get("role") == "assistant":
-                blocks = self._filter_content(msg.get("content", []))
-                for b in blocks:
-                    b = self._normalize_block(b)
-                    if b.get("type") == "text":
-                        text = b.get("text", "").strip()
-                        if len(text) > 120:
-                            final_idx = i
-                            break
-                if final_idx >= 0:
-                    break
-
-        if final_idx >= 0 and final_idx < len(intermediates) - 1:
-            # 有 final，且后面没有更多消息
-            turn["final_msg"] = intermediates[final_idx]
-            turn["intermediate"] = intermediates[:final_idx]
-        elif final_idx >= 0:
-            # final 就是最后一条
-            turn["final_msg"] = intermediates[final_idx]
-            turn["intermediate"] = intermediates[:final_idx]
-
     # ── 轮次渲染 ───────────────────────────────────────
 
+    def _is_substantive(self, msg: dict) -> bool:
+        """判断消息是否有实质性的文本内容（而非仅思考/工具调用/短确认）。"""
+        role = msg.get("role", "")
+        if role != "assistant":
+            return False
+        blocks = self._filter_content(msg.get("content", []))
+        if not blocks:
+            return False
+        for b in blocks:
+            b = self._normalize_block(b)
+            if b.get("type") == "text":
+                text = b.get("text", "").strip()
+                if len(text) > 10:
+                    return True
+        return False
+
     def _render_turn(self, turn: dict) -> str:
-        """渲染一轮对话。"""
+        """渲染一轮对话。
+
+        连续的无实质内容的消息合并为中间步骤组（折叠），
+        有实质文本的助手消息单独渲染为可见气泡。
+        """
         parts = []
 
         # 用户消息
@@ -457,17 +437,26 @@ class DocGenerator:
             blocks = self._filter_content(msg.get("content", []))
             parts.append(self._html_user_msg(ts, blocks))
 
-        # 中间步骤 — 父级折叠（如有）
-        intermediate = turn.get("intermediate", [])
-        if intermediate:
-            parts.append(self._html_intermediate_group(intermediate))
+        # 遍历后续消息：连续的无实质内容消息合并为中间步骤组
+        buffer = []
+        for msg in turn["messages"]:
+            if self._is_substantive(msg):
+                if buffer:
+                    parts.append(self._html_intermediate_group(buffer))
+                    buffer = []
+                role = msg.get("role", "")
+                ts = msg.get("timestamp", "")
+                blocks = self._filter_content(msg.get("content", []))
+                if role == "system":
+                    label = ROLE_LABEL.get(role, role)
+                    parts.append(self._html_system_msg(label, ts, blocks, collapsed=self.collapse))
+                elif role == "assistant":
+                    parts.append(self._html_assistant_msg(ts, blocks))
+            else:
+                buffer.append(msg)
 
-        # 最终回答
-        if turn["final_msg"]:
-            msg = turn["final_msg"]
-            ts = msg.get("timestamp", "")
-            blocks = self._filter_content(msg.get("content", []))
-            parts.append(self._html_assistant_msg(ts, blocks))
+        if buffer:
+            parts.append(self._html_intermediate_group(buffer))
 
         return "\n".join(parts)
 
