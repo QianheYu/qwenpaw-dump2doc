@@ -661,7 +661,9 @@ class DocGenerator:
                 background: var(--tool-bg);
                 border-top: 1px solid var(--border);
             }
-            /* 中间步骤内的消息与正文一致，不加额外覆盖 */
+            .intermediate-body .message.system {
+                justify-content: flex-start;
+            }
 
             /* System collapse */
             .system-details {
