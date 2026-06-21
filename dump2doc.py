@@ -629,10 +629,12 @@ class DocGenerator:
             }
             .message.user .message-time { text-align: right; }
 
-            /* 中间步骤父级折叠 */
-            .intermediate-group { margin: 10px 0; }
+            /* 中间步骤父级折叠 — 与助手气泡对齐 */
+            .intermediate-group {
+                display: flex; margin: 10px 0;
+            }
             .intermediate-details {
-                width: 100%;
+                max-width: 78%;
                 border: 1px dashed var(--border); border-radius: 10px;
                 overflow: hidden;
             }
@@ -640,7 +642,6 @@ class DocGenerator:
                 cursor: pointer; user-select: none; padding: 10px 16px;
                 font-size: 13px; color: var(--sub); font-weight: 500;
                 background: var(--surface); list-style: none;
-                text-align: center;
             }
             .intermediate-details > summary::-webkit-details-marker { display: none; }
             .intermediate-details > summary:hover { background: var(--tool-bg); }
