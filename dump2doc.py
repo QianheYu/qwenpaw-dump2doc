@@ -657,12 +657,15 @@ class DocGenerator:
             .intermediate-details > summary::-webkit-details-marker { display: none; }
             .intermediate-details > summary:hover { background: var(--tool-bg); }
             .intermediate-body {
-                padding: 8px 0 4px;
+                padding: 8px 10px 4px;
                 background: var(--tool-bg);
                 border-top: 1px solid var(--border);
             }
             .intermediate-body .message.system {
                 justify-content: flex-start;
+            }
+            .intermediate-body .system-details {
+                max-width: none;
             }
 
             /* System collapse */
