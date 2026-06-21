@@ -461,7 +461,7 @@ class DocGenerator:
         return "\n".join(parts)
 
     def _html_intermediate_group(self, messages: list) -> str:
-        """生成中间步骤的父级折叠组。"""
+        """生成中间步骤的父级折叠组（与助手气泡对齐）。"""
         if not messages:
             return ""
 
@@ -495,7 +495,10 @@ class DocGenerator:
 
         parts = []
         if self.collapse:
+            # 复用 .message.ai 的 flex 布局 + 隐藏 avatar，保证与气泡完全对齐
             parts.append('<div class="intermediate-group">')
+            parts.append('<div class="avatar" aria-hidden="true">🤖</div>')
+            parts.append('<div class="bubble-wrap">')
             parts.append(f'<details class="intermediate-details" open>')
             parts.append(f'<summary>🔍 中间步骤: {html_escape(summary)}</summary>')
             parts.append('<div class="intermediate-body">')
@@ -520,6 +523,7 @@ class DocGenerator:
         if self.collapse:
             parts.append('</div>')
             parts.append('</details>')
+            parts.append('</div>')
             parts.append('</div>')
 
         return "\n".join(parts)
@@ -629,12 +633,15 @@ class DocGenerator:
             }
             .message.user .message-time { text-align: right; }
 
-            /* 中间步骤父级折叠 — 与助手气泡对齐 */
+            /* 中间步骤父级折叠 — 复用 .message.ai flex 布局对齐 */
             .intermediate-group {
-                display: flex; margin: 10px 0;
+                display: flex; margin: 6px 0 18px; gap: 12px;
+            }
+            .intermediate-group .avatar {
+                opacity: 0; pointer-events: none;
             }
             .intermediate-details {
-                max-width: 78%;
+                width: 100%;
                 border: 1px dashed var(--border); border-radius: 10px;
                 overflow: hidden;
             }
