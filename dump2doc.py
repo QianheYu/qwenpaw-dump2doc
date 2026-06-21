@@ -640,8 +640,12 @@ class DocGenerator:
             .intermediate-group .avatar {
                 opacity: 0; pointer-events: none;
             }
-            .intermediate-details {
+            .intermediate-group .bubble-wrap {
                 width: 100%;
+                flex: 0 0 auto;
+                overflow: hidden;
+            }
+            .intermediate-details {
                 border: 1px dashed var(--border); border-radius: 10px;
                 overflow: hidden;
             }
